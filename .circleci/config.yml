@@ -1,0 +1,58 @@
+version: 2.1
+
+commands:
+  install_build_deps:
+    parameters:
+      sudo:
+        type: boolean
+        default: false
+      extra:
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: install cmake gcc
+          command: |
+            <<#parameters.sudo >> sudo <</parameters.sudo >> apt-get update
+            <<#parameters.sudo >> sudo <</parameters.sudo >> apt-get install \
+            -y cmake g++ git << parameters.extra >>
+      - run:
+          name: install fmtlib
+          command: |
+            git clone https://github.com/fmtlib/fmt.git
+            mkdir fmt/build
+            cd fmt/build
+            cmake -DFMT_TEST=OFF -DFMT_DOC=OFF ..
+            make
+            <<#parameters.sudo >> sudo <</parameters.sudo >> make install
+
+  cmake_build:
+    description: build
+    steps:
+      - run:
+          name: configure
+          command: |
+            mkdir build
+            cd build
+            cmake ..
+            make
+            ./mwe
+
+jobs:
+  clang:
+    docker:
+      - image: debian:stable
+    environment:
+      CC: /usr/bin/clang
+      CXX: /usr/bin/clang++
+    steps:
+      - checkout
+      - install_build_deps:
+          extra: clang
+      - cmake_build
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - clang
